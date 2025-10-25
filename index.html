@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>五子棋網頁遊戲</title>
+    <title>五子棋 AI 對戰</title>
     <style>
         * {
             margin: 0;
@@ -42,6 +42,35 @@
             margin-bottom: 1rem;
         }
 
+        .mode-selector {
+            display: flex;
+            gap: 0.5rem;
+            justify-content: center;
+            margin-bottom: 1rem;
+        }
+
+        .mode-btn {
+            padding: 0.5rem 1rem;
+            background: white;
+            border: 2px solid #d1d5db;
+            border-radius: 0.375rem;
+            font-size: 0.875rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .mode-btn.active {
+            background: #78350f;
+            color: white;
+            border-color: #78350f;
+        }
+
+        .mode-btn:hover:not(.active) {
+            background: #f9fafb;
+            border-color: #9ca3af;
+        }
+
         .controls {
             display: flex;
             align-items: center;
@@ -57,6 +86,10 @@
 
         .status.winner {
             color: #16a34a;
+        }
+
+        .status.thinking {
+            color: #ea580c;
         }
 
         .player-black {
@@ -167,7 +200,11 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1 class="title">五子棋網頁遊戲</h1>
+            <h1 class="title">五子棋 AI 對戰</h1>
+            <div class="mode-selector">
+                <button class="mode-btn active" onclick="setGameMode('pvp')">雙人對戰</button>
+                <button class="mode-btn" onclick="setGameMode('pve')">對戰 AI</button>
+            </div>
             <div class="controls">
                 <div id="status" class="status">
                     當前回合：<span class="player-black">⚫ 黑方</span>
@@ -188,6 +225,33 @@
         let currentPlayer = 'black';
         let winner = null;
         let winningLine = [];
+        let gameMode = 'pvp'; // 'pvp' or 'pve'
+        let isAIThinking = false;
+
+        // AI 相關常數
+        const AI_PLAYER = 'white';
+        const HUMAN_PLAYER = 'black';
+        const SEARCH_DEPTH = 3; // AI 搜尋深度
+
+        // 評分權重
+        const SCORES = {
+            FIVE: 100000,      // 五連
+            LIVE_FOUR: 10000,  // 活四
+            DEAD_FOUR: 1000,   // 死四
+            LIVE_THREE: 1000,  // 活三
+            DEAD_THREE: 100,   // 死三
+            LIVE_TWO: 100,     // 活二
+            DEAD_TWO: 10,      // 死二
+            ONE: 1             // 單子
+        };
+
+        function setGameMode(mode) {
+            gameMode = mode;
+            const buttons = document.querySelectorAll('.mode-btn');
+            buttons.forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            resetGame();
+        }
 
         function initBoard() {
             const boardElement = document.getElementById('board');
@@ -206,18 +270,199 @@
         }
 
         function handleCellClick(row, col) {
-            if (board[row][col] || winner) return;
+            if (board[row][col] || winner || isAIThinking) return;
+            if (gameMode === 'pve' && currentPlayer === AI_PLAYER) return;
 
-            board[row][col] = currentPlayer;
+            makeMove(row, col, currentPlayer);
+        }
+
+        function makeMove(row, col, player) {
+            board[row][col] = player;
             renderBoard();
 
-            if (checkWinner(row, col, currentPlayer)) {
-                winner = currentPlayer;
+            if (checkWinner(row, col, player)) {
+                winner = player;
                 updateStatus();
             } else {
                 currentPlayer = currentPlayer === 'black' ? 'white' : 'black';
                 updateStatus();
+
+                // 如果是 AI 模式且輪到 AI
+                if (gameMode === 'pve' && currentPlayer === AI_PLAYER && !winner) {
+                    isAIThinking = true;
+                    updateStatus();
+                    setTimeout(() => {
+                        aiMove();
+                        isAIThinking = false;
+                    }, 500);
+                }
             }
+        }
+
+        function aiMove() {
+            const move = getBestMove();
+            if (move) {
+                makeMove(move.row, move.col, AI_PLAYER);
+            }
+        }
+
+        function getBestMove() {
+            let bestScore = -Infinity;
+            let bestMove = null;
+            const candidates = getCandidateMoves();
+
+            for (const [row, col] of candidates) {
+                board[row][col] = AI_PLAYER;
+                const score = minimax(SEARCH_DEPTH - 1, -Infinity, Infinity, false);
+                board[row][col] = null;
+
+                if (score > bestScore) {
+                    bestScore = score;
+                    bestMove = { row, col };
+                }
+            }
+
+            return bestMove;
+        }
+
+        function minimax(depth, alpha, beta, isMaximizing) {
+            // 檢查遊戲結束
+            const evaluation = evaluateBoard();
+            if (depth === 0 || Math.abs(evaluation) > SCORES.FIVE / 2) {
+                return evaluation;
+            }
+
+            const candidates = getCandidateMoves();
+            if (candidates.length === 0) return 0;
+
+            if (isMaximizing) {
+                let maxScore = -Infinity;
+                for (const [row, col] of candidates) {
+                    board[row][col] = AI_PLAYER;
+                    const score = minimax(depth - 1, alpha, beta, false);
+                    board[row][col] = null;
+                    maxScore = Math.max(maxScore, score);
+                    alpha = Math.max(alpha, score);
+                    if (beta <= alpha) break;
+                }
+                return maxScore;
+            } else {
+                let minScore = Infinity;
+                for (const [row, col] of candidates) {
+                    board[row][col] = HUMAN_PLAYER;
+                    const score = minimax(depth - 1, alpha, beta, true);
+                    board[row][col] = null;
+                    minScore = Math.min(minScore, score);
+                    beta = Math.min(beta, score);
+                    if (beta <= alpha) break;
+                }
+                return minScore;
+            }
+        }
+
+        function getCandidateMoves() {
+            const candidates = new Set();
+            const range = 2;
+
+            for (let row = 0; row < BOARD_SIZE; row++) {
+                for (let col = 0; col < BOARD_SIZE; col++) {
+                    if (board[row][col]) {
+                        for (let dr = -range; dr <= range; dr++) {
+                            for (let dc = -range; dc <= range; dc++) {
+                                const newRow = row + dr;
+                                const newCol = col + dc;
+                                if (newRow >= 0 && newRow < BOARD_SIZE && 
+                                    newCol >= 0 && newCol < BOARD_SIZE && 
+                                    !board[newRow][newCol]) {
+                                    candidates.add(`${newRow},${newCol}`);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // 如果棋盤是空的，返回中心位置
+            if (candidates.size === 0) {
+                return [[Math.floor(BOARD_SIZE / 2), Math.floor(BOARD_SIZE / 2)]];
+            }
+
+            return Array.from(candidates).map(pos => pos.split(',').map(Number));
+        }
+
+        function evaluateBoard() {
+            let score = 0;
+            score += evaluatePlayer(AI_PLAYER);
+            score -= evaluatePlayer(HUMAN_PLAYER);
+            return score;
+        }
+
+        function evaluatePlayer(player) {
+            let score = 0;
+            
+            // 評估所有方向
+            const directions = [[0, 1], [1, 0], [1, 1], [1, -1]];
+            
+            for (let row = 0; row < BOARD_SIZE; row++) {
+                for (let col = 0; col < BOARD_SIZE; col++) {
+                    if (board[row][col] === player) {
+                        for (const [dx, dy] of directions) {
+                            score += evaluateLine(row, col, dx, dy, player);
+                        }
+                    }
+                }
+            }
+            
+            return score;
+        }
+
+        function evaluateLine(row, col, dx, dy, player) {
+            let count = 1;
+            let openEnds = 0;
+            
+            // 正方向
+            let r = row + dx;
+            let c = col + dy;
+            while (r >= 0 && r < BOARD_SIZE && c >= 0 && c < BOARD_SIZE && board[r][c] === player) {
+                count++;
+                r += dx;
+                c += dy;
+            }
+            if (r >= 0 && r < BOARD_SIZE && c >= 0 && c < BOARD_SIZE && !board[r][c]) {
+                openEnds++;
+            }
+            
+            // 反方向
+            r = row - dx;
+            c = col - dy;
+            while (r >= 0 && r < BOARD_SIZE && c >= 0 && c < BOARD_SIZE && board[r][c] === player) {
+                count++;
+                r -= dx;
+                c -= dy;
+            }
+            if (r >= 0 && r < BOARD_SIZE && c >= 0 && c < BOARD_SIZE && !board[r][c]) {
+                openEnds++;
+            }
+            
+            return getPatternScore(count, openEnds);
+        }
+
+        function getPatternScore(count, openEnds) {
+            if (count >= 5) return SCORES.FIVE;
+            if (count === 4) {
+                if (openEnds === 2) return SCORES.LIVE_FOUR;
+                if (openEnds === 1) return SCORES.DEAD_FOUR;
+            }
+            if (count === 3) {
+                if (openEnds === 2) return SCORES.LIVE_THREE;
+                if (openEnds === 1) return SCORES.DEAD_THREE;
+            }
+            if (count === 2) {
+                if (openEnds === 2) return SCORES.LIVE_TWO;
+                if (openEnds === 1) return SCORES.DEAD_TWO;
+            }
+            if (count === 1) return SCORES.ONE;
+            return 0;
         }
 
         function checkWinner(row, col, player) {
@@ -282,7 +527,7 @@
                 cell.innerHTML = '';
                 cell.className = 'cell';
                 
-                if (winner) {
+                if (winner || isAIThinking) {
                     cell.classList.add('disabled');
                 }
                 
@@ -304,11 +549,24 @@
         function updateStatus() {
             const statusElement = document.getElementById('status');
             if (winner) {
-                const winnerText = winner === 'black' ? '黑方' : '白方';
+                let winnerText;
+                if (gameMode === 'pve') {
+                    winnerText = winner === AI_PLAYER ? 'AI' : '玩家';
+                } else {
+                    winnerText = winner === 'black' ? '黑方' : '白方';
+                }
                 statusElement.innerHTML = `<span class="winner">🎉 ${winnerText}獲勝！</span>`;
+            } else if (isAIThinking) {
+                statusElement.innerHTML = `<span class="thinking">🤔 AI 思考中...</span>`;
             } else {
-                const playerClass = currentPlayer === 'black' ? 'player-black' : 'player-white';
-                const playerText = currentPlayer === 'black' ? '⚫ 黑方' : '⚪ 白方';
+                let playerText, playerClass;
+                if (gameMode === 'pve') {
+                    playerText = currentPlayer === AI_PLAYER ? '⚪ AI' : '⚫ 玩家';
+                    playerClass = currentPlayer === AI_PLAYER ? 'player-white' : 'player-black';
+                } else {
+                    playerText = currentPlayer === 'black' ? '⚫ 黑方' : '⚪ 白方';
+                    playerClass = currentPlayer === 'black' ? 'player-black' : 'player-white';
+                }
                 statusElement.innerHTML = `當前回合：<span class="${playerClass}">${playerText}</span>`;
             }
         }
@@ -318,6 +576,7 @@
             currentPlayer = 'black';
             winner = null;
             winningLine = [];
+            isAIThinking = false;
             renderBoard();
             updateStatus();
         }
