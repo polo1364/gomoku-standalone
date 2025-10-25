@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>五子棋 AI 對戰</title>
+    <title>銀河五子棋 - AI 對戰</title>
     <style>
         * {
             margin: 0;
@@ -11,23 +11,77 @@
             box-sizing: border-box;
         }
 
+        @keyframes stars {
+            from { transform: translateY(0px); }
+            to { transform: translateY(-2000px); }
+        }
+
+        @keyframes glow {
+            0%, 100% { box-shadow: 0 0 20px rgba(139, 92, 246, 0.5), 0 0 40px rgba(139, 92, 246, 0.3); }
+            50% { box-shadow: 0 0 30px rgba(139, 92, 246, 0.8), 0 0 60px rgba(139, 92, 246, 0.5); }
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+        }
+
         body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-            background: linear-gradient(to bottom right, #fffbeb, #fed7aa);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #0a0e27;
             min-height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
             padding: 1rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        body::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: 
+                radial-gradient(2px 2px at 20% 30%, white, transparent),
+                radial-gradient(2px 2px at 60% 70%, white, transparent),
+                radial-gradient(1px 1px at 50% 50%, white, transparent),
+                radial-gradient(1px 1px at 80% 10%, white, transparent),
+                radial-gradient(2px 2px at 90% 60%, white, transparent),
+                radial-gradient(1px 1px at 33% 80%, white, transparent),
+                radial-gradient(1px 1px at 15% 90%, white, transparent);
+            background-size: 200% 200%;
+            animation: stars 100s linear infinite;
+            opacity: 0.5;
+        }
+
+        body::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: radial-gradient(ellipse at center, transparent 0%, rgba(10, 14, 39, 0.8) 100%);
+            pointer-events: none;
         }
 
         .container {
-            background: white;
-            border-radius: 1rem;
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+            background: linear-gradient(135deg, rgba(30, 27, 75, 0.9) 0%, rgba(15, 12, 41, 0.95) 100%);
+            border-radius: 1.5rem;
+            box-shadow: 
+                0 0 60px rgba(139, 92, 246, 0.3),
+                0 25px 50px -12px rgba(0, 0, 0, 0.5),
+                inset 0 0 100px rgba(139, 92, 246, 0.1);
             padding: 2rem;
             max-width: 56rem;
             width: 100%;
+            position: relative;
+            z-index: 1;
+            border: 1px solid rgba(139, 92, 246, 0.3);
         }
 
         .header {
@@ -36,10 +90,16 @@
         }
 
         .title {
-            font-size: 2.25rem;
+            font-size: 2.5rem;
             font-weight: bold;
-            color: #78350f;
+            background: linear-gradient(135deg, #a78bfa 0%, #ec4899 50%, #8b5cf6 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
             margin-bottom: 1rem;
+            text-shadow: 0 0 30px rgba(139, 92, 246, 0.5);
+            animation: float 3s ease-in-out infinite;
+            letter-spacing: 2px;
         }
 
         .mode-selector {
@@ -50,25 +110,30 @@
         }
 
         .mode-btn {
-            padding: 0.5rem 1rem;
-            background: white;
-            border: 2px solid #d1d5db;
-            border-radius: 0.375rem;
+            padding: 0.75rem 1.5rem;
+            background: rgba(139, 92, 246, 0.1);
+            border: 2px solid rgba(139, 92, 246, 0.3);
+            border-radius: 0.5rem;
             font-size: 0.875rem;
-            font-weight: 500;
+            font-weight: 600;
             cursor: pointer;
-            transition: all 0.2s;
+            transition: all 0.3s;
+            color: #a78bfa;
+            text-transform: uppercase;
+            letter-spacing: 1px;
         }
 
         .mode-btn.active {
-            background: #78350f;
+            background: linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%);
             color: white;
-            border-color: #78350f;
+            border-color: #ec4899;
+            box-shadow: 0 0 20px rgba(139, 92, 246, 0.6);
         }
 
         .mode-btn:hover:not(.active) {
-            background: #f9fafb;
-            border-color: #9ca3af;
+            background: rgba(139, 92, 246, 0.2);
+            border-color: rgba(139, 92, 246, 0.5);
+            transform: translateY(-2px);
         }
 
         .controls {
@@ -82,73 +147,105 @@
         .status {
             font-size: 1.125rem;
             font-weight: 600;
+            color: #e9d5ff;
+            text-shadow: 0 0 10px rgba(139, 92, 246, 0.5);
         }
 
         .status.winner {
-            color: #16a34a;
+            color: #34d399;
+            text-shadow: 0 0 20px rgba(52, 211, 153, 0.8);
+            animation: glow 2s ease-in-out infinite;
         }
 
         .status.thinking {
-            color: #ea580c;
+            color: #fbbf24;
+            text-shadow: 0 0 20px rgba(251, 191, 36, 0.8);
         }
 
         .player-black {
-            color: #1f2937;
+            color: #c084fc;
         }
 
         .player-white {
-            color: #6b7280;
+            color: #60a5fa;
         }
 
         .reset-btn {
-            padding: 0.5rem 1rem;
-            background: white;
-            border: 1px solid #d1d5db;
-            border-radius: 0.375rem;
+            padding: 0.75rem 1.5rem;
+            background: linear-gradient(135deg, rgba(139, 92, 246, 0.2) 0%, rgba(236, 72, 153, 0.2) 100%);
+            border: 2px solid rgba(139, 92, 246, 0.5);
+            border-radius: 0.5rem;
             font-size: 0.875rem;
-            font-weight: 500;
+            font-weight: 600;
             cursor: pointer;
-            transition: all 0.2s;
+            transition: all 0.3s;
+            color: #e9d5ff;
+            text-transform: uppercase;
+            letter-spacing: 1px;
         }
 
         .reset-btn:hover {
-            background: #f9fafb;
-            border-color: #9ca3af;
+            background: linear-gradient(135deg, rgba(139, 92, 246, 0.4) 0%, rgba(236, 72, 153, 0.4) 100%);
+            border-color: #ec4899;
+            transform: translateY(-2px);
+            box-shadow: 0 0 20px rgba(139, 92, 246, 0.6);
         }
 
         .board-container {
             display: flex;
             justify-content: center;
-            margin-top: 1rem;
+            margin-top: 1.5rem;
         }
 
         .board-wrapper {
-            background: #92400e;
-            padding: 1rem;
-            border-radius: 0.5rem;
-            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3);
+            background: linear-gradient(135deg, rgba(17, 24, 39, 0.8) 0%, rgba(31, 41, 55, 0.8) 100%);
+            padding: 1.5rem;
+            border-radius: 1rem;
+            box-shadow: 
+                inset 0 0 50px rgba(0, 0, 0, 0.5),
+                0 0 40px rgba(139, 92, 246, 0.2);
+            border: 2px solid rgba(139, 92, 246, 0.2);
         }
 
         .board {
             display: grid;
             grid-template-columns: repeat(15, 1fr);
-            border: 2px solid #78350f;
-            background: rgba(146, 64, 14, 0.1);
+            gap: 1px;
+            background: rgba(139, 92, 246, 0.1);
+            padding: 2px;
+            border-radius: 0.5rem;
         }
 
         .cell {
             width: 2.5rem;
             height: 2.5rem;
-            border: 1px solid rgba(120, 53, 15, 0.3);
+            background: rgba(17, 24, 39, 0.6);
             display: flex;
             align-items: center;
             justify-content: center;
             cursor: pointer;
-            transition: background-color 0.2s;
+            transition: all 0.3s;
+            position: relative;
+        }
+
+        .cell::before {
+            content: '';
+            position: absolute;
+            width: 4px;
+            height: 4px;
+            background: rgba(139, 92, 246, 0.3);
+            border-radius: 50%;
+            opacity: 0;
+            transition: opacity 0.3s;
         }
 
         .cell:not(.disabled):hover {
-            background: rgba(146, 64, 14, 0.2);
+            background: rgba(139, 92, 246, 0.2);
+            box-shadow: 0 0 15px rgba(139, 92, 246, 0.4);
+        }
+
+        .cell:not(.disabled):hover::before {
+            opacity: 1;
         }
 
         .cell.disabled {
@@ -156,33 +253,69 @@
         }
 
         .cell.winning {
-            background: #bbf7d0;
+            background: rgba(52, 211, 153, 0.2);
+            box-shadow: 0 0 20px rgba(52, 211, 153, 0.6);
         }
 
         .stone {
-            width: 1.75rem;
-            height: 1.75rem;
+            width: 2rem;
+            height: 2rem;
             border-radius: 50%;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+            position: relative;
+            transition: all 0.3s;
+        }
+
+        .stone::before {
+            content: '';
+            position: absolute;
+            top: 15%;
+            left: 15%;
+            width: 30%;
+            height: 30%;
+            background: rgba(255, 255, 255, 0.4);
+            border-radius: 50%;
+            filter: blur(3px);
         }
 
         .stone.black {
-            background: linear-gradient(to bottom right, #1f2937, #000000);
-            border: 2px solid #374151;
+            background: radial-gradient(circle at 30% 30%, #6b7280, #1f2937, #000000);
+            box-shadow: 
+                0 4px 10px rgba(0, 0, 0, 0.8),
+                inset 0 2px 4px rgba(255, 255, 255, 0.1),
+                0 0 20px rgba(139, 92, 246, 0.3);
+            border: 1px solid rgba(139, 92, 246, 0.4);
         }
 
         .stone.white {
-            background: linear-gradient(to bottom right, #ffffff, #e5e7eb);
-            border: 2px solid #d1d5db;
+            background: radial-gradient(circle at 30% 30%, #ffffff, #e0e7ff, #c7d2fe);
+            box-shadow: 
+                0 4px 10px rgba(0, 0, 0, 0.6),
+                inset 0 2px 4px rgba(255, 255, 255, 0.8),
+                0 0 20px rgba(96, 165, 250, 0.6);
+            border: 1px solid rgba(96, 165, 250, 0.6);
         }
 
         .stone.winning {
-            box-shadow: 0 0 0 4px #22c55e;
+            animation: glow 1.5s ease-in-out infinite;
+        }
+
+        .stone.black.winning {
+            box-shadow: 
+                0 4px 10px rgba(0, 0, 0, 0.8),
+                0 0 30px rgba(52, 211, 153, 0.8),
+                0 0 50px rgba(52, 211, 153, 0.5);
+        }
+
+        .stone.white.winning {
+            box-shadow: 
+                0 4px 10px rgba(0, 0, 0, 0.6),
+                0 0 30px rgba(52, 211, 153, 0.8),
+                0 0 50px rgba(52, 211, 153, 0.5);
         }
 
         @media (max-width: 640px) {
             .title {
-                font-size: 1.5rem;
+                font-size: 1.75rem;
             }
 
             .cell {
@@ -194,13 +327,17 @@
                 width: 1.5rem;
                 height: 1.5rem;
             }
+
+            .board-wrapper {
+                padding: 1rem;
+            }
         }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
-            <h1 class="title">五子棋 AI 對戰</h1>
+            <h1 class="title">⭐ 銀河五子棋 ⭐</h1>
             <div class="mode-selector">
                 <button class="mode-btn active" onclick="setGameMode('pvp')">雙人對戰</button>
                 <button class="mode-btn" onclick="setGameMode('pve')">對戰 AI</button>
@@ -225,24 +362,22 @@
         let currentPlayer = 'black';
         let winner = null;
         let winningLine = [];
-        let gameMode = 'pvp'; // 'pvp' or 'pve'
+        let gameMode = 'pvp';
         let isAIThinking = false;
 
-        // AI 相關常數
         const AI_PLAYER = 'white';
         const HUMAN_PLAYER = 'black';
-        const SEARCH_DEPTH = 3; // AI 搜尋深度
+        const SEARCH_DEPTH = 3;
 
-        // 評分權重
         const SCORES = {
-            FIVE: 100000,      // 五連
-            LIVE_FOUR: 10000,  // 活四
-            DEAD_FOUR: 1000,   // 死四
-            LIVE_THREE: 1000,  // 活三
-            DEAD_THREE: 100,   // 死三
-            LIVE_TWO: 100,     // 活二
-            DEAD_TWO: 10,      // 死二
-            ONE: 1             // 單子
+            FIVE: 100000,
+            LIVE_FOUR: 10000,
+            DEAD_FOUR: 1000,
+            LIVE_THREE: 1000,
+            DEAD_THREE: 100,
+            LIVE_TWO: 100,
+            DEAD_TWO: 10,
+            ONE: 1
         };
 
         function setGameMode(mode) {
@@ -287,7 +422,6 @@
                 currentPlayer = currentPlayer === 'black' ? 'white' : 'black';
                 updateStatus();
 
-                // 如果是 AI 模式且輪到 AI
                 if (gameMode === 'pve' && currentPlayer === AI_PLAYER && !winner) {
                     isAIThinking = true;
                     updateStatus();
@@ -326,7 +460,6 @@
         }
 
         function minimax(depth, alpha, beta, isMaximizing) {
-            // 檢查遊戲結束
             const evaluation = evaluateBoard();
             if (depth === 0 || Math.abs(evaluation) > SCORES.FIVE / 2) {
                 return evaluation;
@@ -382,7 +515,6 @@
                 }
             }
 
-            // 如果棋盤是空的，返回中心位置
             if (candidates.size === 0) {
                 return [[Math.floor(BOARD_SIZE / 2), Math.floor(BOARD_SIZE / 2)]];
             }
@@ -399,8 +531,6 @@
 
         function evaluatePlayer(player) {
             let score = 0;
-            
-            // 評估所有方向
             const directions = [[0, 1], [1, 0], [1, 1], [1, -1]];
             
             for (let row = 0; row < BOARD_SIZE; row++) {
@@ -420,7 +550,6 @@
             let count = 1;
             let openEnds = 0;
             
-            // 正方向
             let r = row + dx;
             let c = col + dy;
             while (r >= 0 && r < BOARD_SIZE && c >= 0 && c < BOARD_SIZE && board[r][c] === player) {
@@ -432,7 +561,6 @@
                 openEnds++;
             }
             
-            // 反方向
             r = row - dx;
             c = col - dy;
             while (r >= 0 && r < BOARD_SIZE && c >= 0 && c < BOARD_SIZE && board[r][c] === player) {
@@ -466,17 +594,11 @@
         }
 
         function checkWinner(row, col, player) {
-            const directions = [
-                [0, 1],   // 橫
-                [1, 0],   // 直
-                [1, 1],   // 右下斜
-                [1, -1],  // 左下斜
-            ];
+            const directions = [[0, 1], [1, 0], [1, 1], [1, -1]];
 
             for (const [dx, dy] of directions) {
                 const line = [[row, col]];
                 
-                // 正方向
                 for (let i = 1; i < 5; i++) {
                     const newRow = row + dx * i;
                     const newCol = col + dy * i;
@@ -490,7 +612,6 @@
                     line.push([newRow, newCol]);
                 }
 
-                // 反方向
                 for (let i = 1; i < 5; i++) {
                     const newRow = row - dx * i;
                     const newCol = col - dy * i;
@@ -551,17 +672,17 @@
             if (winner) {
                 let winnerText;
                 if (gameMode === 'pve') {
-                    winnerText = winner === AI_PLAYER ? 'AI' : '玩家';
+                    winnerText = winner === AI_PLAYER ? '🤖 AI' : '👤 玩家';
                 } else {
-                    winnerText = winner === 'black' ? '黑方' : '白方';
+                    winnerText = winner === 'black' ? '⚫ 黑方' : '⚪ 白方';
                 }
-                statusElement.innerHTML = `<span class="winner">🎉 ${winnerText}獲勝！</span>`;
+                statusElement.innerHTML = `<span class="winner">🎉 ${winnerText} 獲勝！</span>`;
             } else if (isAIThinking) {
-                statusElement.innerHTML = `<span class="thinking">🤔 AI 思考中...</span>`;
+                statusElement.innerHTML = `<span class="thinking">🤖 AI 思考中...</span>`;
             } else {
                 let playerText, playerClass;
                 if (gameMode === 'pve') {
-                    playerText = currentPlayer === AI_PLAYER ? '⚪ AI' : '⚫ 玩家';
+                    playerText = currentPlayer === AI_PLAYER ? '🤖 AI' : '👤 玩家';
                     playerClass = currentPlayer === AI_PLAYER ? 'player-white' : 'player-black';
                 } else {
                     playerText = currentPlayer === 'black' ? '⚫ 黑方' : '⚪ 白方';
@@ -581,7 +702,6 @@
             updateStatus();
         }
 
-        // 初始化遊戲
         initBoard();
         updateStatus();
     </script>
